@@ -1,66 +1,101 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:todo/modules/app/models/application.dart';
+import 'package:todo/modules/tasks/models/task.dart';
+import 'package:todo/modules/tasks/models/tasks.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const App());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class App extends StatelessWidget {
+  const App({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'To-Do App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<Tasks>(
+            create: (_) => Tasks(),
+          ),
+        ],
+        child: MainPage(),
+      ),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
+class MainPage extends StatelessWidget {
+  final _textController = TextEditingController();
 
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
+  MainPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: const Text('todos'),
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+            TextField(
+              controller: _textController,
+              textInputAction: TextInputAction.go,
+              decoration: InputDecoration(hintText: 'What needs to be done?'),
+              onSubmitted: (value) {
+                Provider.of<Tasks>(context, listen: false).addTask(
+                  Task(isCompleted: false, description: value),
+                );
+                _textController.text = '';
+              },
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
+            Expanded(
+              child: Consumer<Tasks>(builder: (context, tasks, child) {
+                return ListView.builder(
+                  itemCount: tasks.tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = tasks.tasks[index];
+                    return CheckboxListTile(
+                      value: task.isCompleted,
+                      title: Text(task.description),
+                      onChanged: (value) {
+                        tasks.setCompleteTask(task, value ?? false);
+                      },
+                    );
+                  },
+                );
+              }),
+            ),
+            Consumer<Tasks>(
+              builder: (context, tasks, child) {
+                return ButtonBar(
+                  children: [
+                    Text('${tasks.tasksToComplete} item left'),
+                    ElevatedButton(
+                        child: Text('All'),
+                        onPressed: () => tasks.setTaskFilter(TaskFilter.all)),
+                    ElevatedButton(
+                        child: Text('Active'),
+                        onPressed: () =>
+                            tasks.setTaskFilter(TaskFilter.active)),
+                    ElevatedButton(
+                        child: Text('Completed'),
+                        onPressed: () =>
+                            tasks.setTaskFilter(TaskFilter.completed))
+                  ],
+                );
+              },
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
